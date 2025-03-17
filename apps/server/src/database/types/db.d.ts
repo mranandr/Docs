@@ -4,6 +4,7 @@
  */
 
 import type { ColumnType } from "kysely";
+import { UserRole } from "src/common/helpers/types/permission";
 
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
@@ -24,6 +25,8 @@ export type JsonPrimitive = boolean | number | string | null;
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+
 
 export interface Attachments {
   createdAt: Generated<Timestamp>;
@@ -155,23 +158,26 @@ export interface Spaces {
 
 export interface Users {
   avatarUrl: string | null;
-  createdAt: Generated<Timestamp>;
-  deactivatedAt: Timestamp | null;
-  deletedAt: Timestamp | null;
+  createdAt: Date; 
+  deactivatedAt: Date | null;
+  deletedAt: Date | null;
   email: string;
-  emailVerifiedAt: Timestamp | null;
-  id: Generated<string>;
+  emailVerifiedAt: Date;
+  id: string;
   invitedById: string | null;
-  lastActiveAt: Timestamp | null;
-  lastLoginAt: Timestamp | null;
+  lastActiveAt: Date | null;
+  lastLoginAt: Date | null;
   locale: string | null;
   name: string | null;
   password: string | null;
-  role: string | null;
-  settings: Json | null;
+  role: UserRole; 
+  settings: any | null;  
   timezone: string | null;
-  updatedAt: Generated<Timestamp>;
-  workspaceId: string | null;
+  updatedAt: Date;
+  workspaceId: string;
+  auth_type: 'Docmost' | 'sso'; 
+  sso_provider?: 'microsoft' | 'Docmost';
+
 }
 
 export interface UserTokens {
@@ -198,7 +204,7 @@ export interface WorkspaceInvitations {
 }
 
 export interface Workspaces {
-  createdAt: Generated<Timestamp>;
+  createdAt: ColumnType<Date, string | Date, string | Date>;
   customDomain: string | null;
   defaultRole: Generated<string>;
   defaultSpaceId: string | null;
@@ -208,9 +214,11 @@ export interface Workspaces {
   hostname: string | null;
   id: Generated<string>;
   logo: string | null;
+  ownerId: string;
   name: string | null;
   settings: Json | null;
-  updatedAt: Generated<Timestamp>;
+  organization: string;
+  updatedAt: ColumnType<Date, string | Date, string | Date>;
 }
 
 export interface DB {

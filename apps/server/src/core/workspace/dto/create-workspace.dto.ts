@@ -1,4 +1,4 @@
-import {IsAlphanumeric, IsOptional, IsString, MaxLength, MinLength} from 'class-validator';
+import {IsAlphanumeric, IsOptional, IsString, MaxLength, MinLength, IsNotEmpty, IsEmail} from 'class-validator';
 import {Transform, TransformFnParams} from "class-transformer";
 
 export class CreateWorkspaceDto {
@@ -17,4 +17,13 @@ export class CreateWorkspaceDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Email must be an email' })
+  email: string;
+
+
+  organization?: string;
+  logo?: string;
+
 }

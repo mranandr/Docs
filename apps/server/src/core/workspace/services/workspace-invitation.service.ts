@@ -24,16 +24,19 @@ import { TokenService } from '../../auth/services/token.service';
 import { nanoIdGen } from '../../../common/helpers';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { executeWithPagination } from '@docmost/db/pagination/pagination';
+import { UserRole } from 'src/common/helpers/types/permission';
 
 @Injectable()
 export class WorkspaceInvitationService {
+  private readonly userRepo: UserRepo;
+  private readonly groupUserRepo: GroupUserRepo;
+
+
   private readonly logger = new Logger(WorkspaceInvitationService.name);
   constructor(
-    private userRepo: UserRepo,
-    private groupUserRepo: GroupUserRepo,
-    private mailService: MailService,
-    private environmentService: EnvironmentService,
-    private tokenService: TokenService,
+    private readonly mailService: MailService,
+    private readonly environmentService: EnvironmentService,
+    private readonly tokenService: TokenService,
     @InjectKysely() private readonly db: KyselyDB,
   ) {}
 
@@ -147,118 +150,118 @@ export class WorkspaceInvitationService {
     }
   }
 
-  async acceptInvitation(dto: AcceptInviteDto, workspaceId: string) {
-    const invitation = await this.db
-      .selectFrom('workspaceInvitations')
-      .selectAll()
-      .where('id', '=', dto.invitationId)
-      .where('workspaceId', '=', workspaceId)
-      .executeTakeFirst();
-
-    if (!invitation) {
-      throw new BadRequestException('Invitation not found');
-    }
-
-    if (dto.token !== invitation.token) {
-      throw new BadRequestException('Invalid invitation token');
-    }
-
-    const password = await hashPassword(dto.password);
-    let newUser: User;
-
-    try {
-      await executeTx(this.db, async (trx) => {
-        newUser = await this.userRepo.insertUser(
-          {
-            name: dto.name,
-            email: invitation.email,
-            emailVerifiedAt: new Date(),
-            password: password,
-            role: invitation.role,
-            invitedById: invitation.invitedById,
-            workspaceId: workspaceId,
-          },
-          trx,
-        );
-
-        // add user to default group
-        await this.groupUserRepo.addUserToDefaultGroup(
-          newUser.id,
-          workspaceId,
-          trx,
-        );
-
-        if (invitation.groupIds && invitation.groupIds.length > 0) {
-          // Ensure the groups are valid
-          const validGroups = await trx
-            .selectFrom('groups')
-            .select(['id', 'name'])
-            .where('groups.id', 'in', invitation.groupIds)
-            .where('groups.workspaceId', '=', workspaceId)
-            .execute();
-
-          if (validGroups && validGroups.length > 0) {
-            const groupUsersToInsert = validGroups.map((group) => ({
-              userId: newUser.id,
-              groupId: group.id,
-            }));
-
-            // add user to groups specified during invite
-            await trx
-              .insertInto('groupUsers')
-              .values(groupUsersToInsert)
-              .onConflict((oc) => oc.columns(['userId', 'groupId']).doNothing())
-              .execute();
-          }
-        }
-
-        // delete invitation record
-        await trx
-          .deleteFrom('workspaceInvitations')
-          .where('id', '=', invitation.id)
-          .execute();
-      });
-    } catch (err: any) {
-      this.logger.error(`acceptInvitation - ${err}`);
-      if (err.message.includes('unique constraint')) {
-        throw new BadRequestException('Invitation already accepted');
-      }
-      throw new BadRequestException(
-        'Failed to accept invitation. An error occurred.',
-      );
-    }
-
-    if (!newUser) {
-      return;
-    }
-
-    // notify the inviter
-    const invitedByUser = await this.userRepo.findById(
-      invitation.invitedById,
-      workspaceId,
-    );
-
-    if (invitedByUser) {
-      const emailTemplate = InvitationAcceptedEmail({
-        invitedUserName: newUser.name,
-        invitedUserEmail: newUser.email,
-      });
-
-      await this.mailService.sendToQueue({
-        to: invitedByUser.email,
-        subject: `${newUser.name} has accepted your Docmost invite`,
-        template: emailTemplate,
-      });
-    }
-
-    return this.tokenService.generateAccessToken(newUser);
-  }
+  // async acceptInvitation(dto: AcceptInviteDto, workspaceId: string) {
+  //   const invitation = await this.db
+  //     .selectFrom('workspaceInvitations')
+  //     .selectAll()
+  //     .where('id', '=', dto.invitationId)
+  //     .where('workspaceId', '=', workspaceId)
+  //     .executeTakeFirst();
+  
+  //   if (!invitation) {
+  //     throw new BadRequestException('Invitation not found');
+  //   }
+  
+  //   if (dto.token !== invitation.token) {
+  //     throw new BadRequestException('Invalid invitation token');
+  //   }
+  
+  //   const password = await hashPassword(dto.password);
+  //   let newUser: User;
+  
+  //   try {
+  //     await executeTx(this.db, async (trx) => {
+  //       const role = invitation.role as UserRole;
+  //       if (!Object.values(UserRole).includes(role)) {
+  //         throw new BadRequestException('Invalid role');
+  //       }
+  
+  //       newUser = await this.userRepo.insertUser(
+  //         {
+  //           name: dto.name,
+  //           email: invitation.email,
+  //           role: role, 
+  //           workspaceId: workspaceId,
+  //           auth_type: 'Docmost', 
+  //         },
+  //       );
+  
+  //       await this.groupUserRepo.addUserToDefaultGroup(
+  //         newUser.id,
+  //         workspaceId,
+  //         trx,
+  //       );
+  
+  //       if (invitation.groupIds && invitation.groupIds.length > 0) {
+  //         // Ensure the groups are valid
+  //         const validGroups = await trx
+  //           .selectFrom('groups')
+  //           .select(['id', 'name'])
+  //           .where('groups.id', 'in', invitation.groupIds)
+  //           .where('groups.workspaceId', '=', workspaceId)
+  //           .execute();
+  
+  //         if (validGroups && validGroups.length > 0) {
+  //           const groupUsersToInsert = validGroups.map((group) => ({
+  //             userId: newUser.id,
+  //             groupId: group.id,
+  //           }));
+  
+  //           // Add user to groups specified during invite
+  //           await trx
+  //             .insertInto('groupUsers')
+  //             .values(groupUsersToInsert)
+  //             .onConflict((oc) => oc.columns(['userId', 'groupId']).doNothing())
+  //             .execute();
+  //         }
+  //       }
+  
+  //       // Delete invitation record
+  //       await trx
+  //         .deleteFrom('workspaceInvitations')
+  //         .where('id', '=', invitation.id)
+  //         .execute();
+  //     });
+  //   } catch (err: any) {
+  //     this.logger.error(`acceptInvitation - ${err}`);
+  //     if (err.message.includes('unique constraint')) {
+  //       throw new BadRequestException('Invitation already accepted');
+  //     }
+  //     throw new BadRequestException(
+  //       'Failed to accept invitation. An error occurred.',
+  //     );
+  //   }
+  
+  //   if (!newUser) {
+  //     return;
+  //   }
+  
+  //   // Notify the inviter
+  //   const invitedByUser = await this.userRepo.findById(
+  //     invitation.invitedById,
+  //     workspaceId,
+  //   );
+  
+  //   if (invitedByUser) {
+  //     const emailTemplate = InvitationAcceptedEmail({
+  //       invitedUserName: newUser.name,
+  //       invitedUserEmail: newUser.email,
+  //     });
+  
+  //     await this.mailService.sendToQueue({
+  //       to: invitedByUser.email,
+  //       subject: `${newUser.name} has accepted your Docmost invite`,
+  //       template: emailTemplate,
+  //     });
+  //   }
+  
+  //   return this.tokenService.generateAccessToken(newUser);
+  // }
 
   async resendInvitation(
     invitationId: string,
     workspaceId: string,
   ): Promise<void> {
-    //
     const invitation = await this.db
       .selectFrom('workspaceInvitations')
       .selectAll()

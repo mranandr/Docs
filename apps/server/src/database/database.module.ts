@@ -45,12 +45,7 @@ types.setTypeParser(types.builtins.INT8, (val) => Number(val));
         plugins: [new CamelCasePlugin()],
         log: (event: LogEvent) => {
           if (environmentService.getNodeEnv() !== 'development') return;
-          if (event.level === 'query') {
-            // console.log(event.query.sql);
-            //if (event.query.parameters.length > 0) {
-            //console.log('parameters: ' + event.query.parameters);
-            //}
-            // console.log('time: ' + event.queryDurationMillis);
+          if (event.level === 'query') {           
           }
         },
       }),

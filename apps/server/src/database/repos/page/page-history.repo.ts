@@ -12,6 +12,7 @@ import { executeWithPagination } from '@docmost/db/pagination/pagination';
 import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { ExpressionBuilder } from 'kysely';
 import { DB } from '@docmost/db/types/db';
+import { KYSELY_MODULE_CONNECTION_TOKEN } from 'nestjs-kysely';
 
 @Injectable()
 export class PageHistoryRepo {

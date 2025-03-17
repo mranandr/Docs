@@ -1,10 +1,11 @@
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import { NotFoundException, ValidationPipe } from '@nestjs/common';
+import { Logger, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { TransformHttpResponseInterceptor } from './common/interceptors/http-response.interceptor';
 import fastifyMultipart from '@fastify/multipart';
 import { WsRedisIoAdapter } from './ws/adapter/ws-redis.adapter';
@@ -18,6 +19,7 @@ async function bootstrap() {
       ignoreTrailingSlash: true,
       ignoreDuplicateSlashes: true,
       maxParamLength: 500,
+      trustProxy: true,
     }),
     {
       logger: new InternalLogFilter(),
@@ -38,18 +40,25 @@ async function bootstrap() {
     .getHttpAdapter()
     .getInstance()
     .addHook('preHandler', function (req, reply, done) {
-      if (
-        req.originalUrl.startsWith('/api') &&
-        !req.originalUrl.startsWith('/api/auth/setup') &&
-        !req.originalUrl.startsWith('/api/health')
-      ) {
+      const publicRoutes = [
+        '/api/auth/setup',
+        '/api/health',
+        '/api/auth/mscallback', // Add any other public routes here
+      ];
+
+      // Check if the request URL matches any public route
+      const isPublicRoute = publicRoutes.some((route) =>
+        req.originalUrl.startsWith(route),
+      );
+
+      // If the request is not a public route, check for workspaceId
+      if (req.originalUrl.startsWith('/api') && !isPublicRoute) {
         if (!req.raw?.['workspaceId']) {
           throw new NotFoundException('Workspace not found');
         }
-        done();
-      } else {
-        done();
       }
+
+      done();
     });
 
   app.useGlobalPipes(
@@ -59,13 +68,26 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.enableCors({
+    origin: 'http://localhost:5173', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
 
-  app.enableCors();
+
 
   app.useGlobalInterceptors(new TransformHttpResponseInterceptor());
   app.enableShutdownHooks();
 
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
+  const logger = new Logger('NestApplication');
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0', () => {
+    logger.log(
+      `Listening on http://127.0.0.1:${port} / ${process.env.APP_URL}`,
+    );
+  });
 }
 
 bootstrap();

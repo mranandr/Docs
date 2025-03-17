@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { v7 as genUuidV7 } from 'uuid';
 import { CreateWorkspaceDto } from '../dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from '../dto/update-workspace.dto';
 import { SpaceService } from '../../space/services/space.service';
@@ -21,16 +22,22 @@ import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { PaginationResult } from '@docmost/db/pagination/pagination';
 import { UpdateWorkspaceUserRoleDto } from '../dto/update-workspace-user-role.dto';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
+import { Workspaces } from '@docmost/db/types/db';
+import { sql } from 'kysely';
+import { SetupMicrosoftWorkspaceDto } from '../dto/SetupMicrosoftWorkspaceDto';
 
 @Injectable()
 export class WorkspaceService {
+  private readonly workspaceRepo: WorkspaceRepo;
+  private readonly groupUserRepo: GroupUserRepo;
+  private readonly userRepo: UserRepo;
+  private readonly groupRepo: GroupRepo;
+
+
   constructor(
-    private workspaceRepo: WorkspaceRepo,
-    private spaceService: SpaceService,
-    private spaceMemberService: SpaceMemberService,
-    private groupRepo: GroupRepo,
-    private groupUserRepo: GroupUserRepo,
-    private userRepo: UserRepo,
+    private readonly spaceService: SpaceService,
+    private readonly spaceMemberService: SpaceMemberService,
+
     @InjectKysely() private readonly db: KyselyDB,
   ) {}
 
@@ -60,6 +67,137 @@ export class WorkspaceService {
     return workspace;
   }
 
+  async addUserToWorkspace(
+    userId: string,
+    workspaceId: string,
+    trx?: KyselyTransaction,
+  ): Promise<void> {
+    const query = trx ? trx : this.db; 
+    await query
+      .updateTable('users')
+      .set({ workspaceId, role: UserRole.MEMBER })
+      .where('id', '=', userId)
+      .execute();
+  }
+
+
+
+
+  async update(workspaceId: string, updateWorkspaceDto: UpdateWorkspaceDto) {
+    const workspace = await this.workspaceRepo.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (updateWorkspaceDto.name) {
+      workspace.name = updateWorkspaceDto.name;
+    }
+
+    if (updateWorkspaceDto.logo) {
+      workspace.logo = updateWorkspaceDto.logo;
+    }
+
+    await this.workspaceRepo.updateWorkspace(updateWorkspaceDto, workspaceId);
+    return workspace;
+  }
+
+  async getWorkspaceUsers(
+    workspaceId: string,
+    pagination: PaginationOptions,
+  ): Promise<PaginationResult<User>> {
+    const users = await this.userRepo.getUsersPaginated(
+      workspaceId,
+      pagination,
+    );
+
+    return users;
+  }
+
+  async updateWorkspaceUserRole(
+    authUser: User,
+    userRoleDto: UpdateWorkspaceUserRoleDto,
+    workspaceId: string,
+  ) {
+    const user = await this.userRepo.findById(userRoleDto.userId, workspaceId);
+  
+    // Cast the role to UserRole
+    const newRole = userRoleDto.role.toLowerCase() as UserRole;
+  
+    if (!user) {
+      throw new BadRequestException('Workspace member not found');
+    }
+  
+    // Validate the role
+    if (!Object.values(UserRole).includes(newRole)) {
+      throw new BadRequestException('Invalid role');
+    }
+  
+    // Prevent ADMIN from managing OWNER role
+    if (
+      (authUser.role === UserRole.ADMIN && newRole === UserRole.OWNER) ||
+      (authUser.role === UserRole.ADMIN && user.role === UserRole.OWNER)
+    ) {
+      throw new ForbiddenException();
+    }
+  
+    if (user.role === newRole) {
+      return user;
+    }
+  
+    const workspaceOwnerCount = await this.userRepo.roleCountByWorkspaceId(
+      workspaceId,
+    );
+  
+    if (user.role === UserRole.OWNER && workspaceOwnerCount === 1) {
+      throw new BadRequestException('There must be at least one workspace owner');
+    }
+  
+    await this.userRepo.updateUser(
+      {
+        role: newRole,
+      },
+      user.id,
+      workspaceId,
+    );
+  }
+
+  async deactivateUser(): Promise<any> {
+    return 'todo';
+  }
+
+  async createMicrosoftWorkspace(payload: SetupMicrosoftWorkspaceDto) {
+    const { organization, workspace, email, name, auth_type, sso_provider } = payload;
+  
+    const createdWorkspace = await this.workspaceRepo.insertWorkspace({
+      name: workspace,
+      organization: organization,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  
+    const user = await this.userRepo.insertUser({
+      email,
+      name,
+      workspaceId: createdWorkspace.id,
+      role: UserRole.OWNER,
+      auth_type,
+      sso_provider,
+    });
+  
+    return { workspace: createdWorkspace, user };
+  }
+  
+
+  async handleFirstUserLogin(user: User, createWorkspaceDto: CreateWorkspaceDto) {
+    const existingWorkspace = await this.workspaceRepo.findFirst();
+
+    if (!existingWorkspace) {
+      return this.create(user, createWorkspaceDto); 
+    }
+
+    return existingWorkspace; 
+  }
+
   async create(
     user: User,
     createWorkspaceDto: CreateWorkspaceDto,
@@ -68,12 +206,18 @@ export class WorkspaceService {
     return await executeTx(
       this.db,
       async (trx) => {
+        let hostname = undefined;
+        let trialEndAt = undefined;
+        let status = undefined;
+        let plan = undefined;
+
+
         // create workspace
         const workspace = await this.workspaceRepo.insertWorkspace(
           {
             name: createWorkspaceDto.name,
-            hostname: createWorkspaceDto.hostname,
             description: createWorkspaceDto.description,
+            hostname,
           },
           trx,
         );
@@ -91,6 +235,7 @@ export class WorkspaceService {
             workspaceId: workspace.id,
             role: UserRole.OWNER,
           })
+          .where('users.id', '=', user.id)
           .execute();
 
         // add user to default group created above
@@ -149,114 +294,4 @@ export class WorkspaceService {
     );
   }
 
-  async addUserToWorkspace(
-    userId: string,
-    workspaceId: string,
-    assignedRole?: UserRole,
-    trx?: KyselyTransaction,
-  ): Promise<void> {
-    return await executeTx(
-      this.db,
-      async (trx) => {
-        const workspace = await trx
-          .selectFrom('workspaces')
-          .select(['id', 'defaultRole'])
-          .where('workspaces.id', '=', workspaceId)
-          .executeTakeFirst();
-
-        if (!workspace) {
-          throw new BadRequestException('Workspace not found');
-        }
-
-        await trx
-          .updateTable('users')
-          .set({
-            role: assignedRole ?? workspace.defaultRole,
-            workspaceId: workspace.id,
-          })
-          .where('id', '=', userId)
-          .execute();
-      },
-      trx,
-    );
-  }
-
-  async update(workspaceId: string, updateWorkspaceDto: UpdateWorkspaceDto) {
-    const workspace = await this.workspaceRepo.findById(workspaceId);
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-
-    if (updateWorkspaceDto.name) {
-      workspace.name = updateWorkspaceDto.name;
-    }
-
-    if (updateWorkspaceDto.logo) {
-      workspace.logo = updateWorkspaceDto.logo;
-    }
-
-    await this.workspaceRepo.updateWorkspace(updateWorkspaceDto, workspaceId);
-    return workspace;
-  }
-
-  async getWorkspaceUsers(
-    workspaceId: string,
-    pagination: PaginationOptions,
-  ): Promise<PaginationResult<User>> {
-    const users = await this.userRepo.getUsersPaginated(
-      workspaceId,
-      pagination,
-    );
-
-    return users;
-  }
-
-  async updateWorkspaceUserRole(
-    authUser: User,
-    userRoleDto: UpdateWorkspaceUserRoleDto,
-    workspaceId: string,
-  ) {
-    const user = await this.userRepo.findById(userRoleDto.userId, workspaceId);
-
-    const newRole = userRoleDto.role.toLowerCase();
-
-    if (!user) {
-      throw new BadRequestException('Workspace member not found');
-    }
-
-    // prevent ADMIN from managing OWNER role
-    if (
-      (authUser.role === UserRole.ADMIN && newRole === UserRole.OWNER) ||
-      (authUser.role === UserRole.ADMIN && user.role === UserRole.OWNER)
-    ) {
-      throw new ForbiddenException();
-    }
-
-    if (user.role === newRole) {
-      return user;
-    }
-
-    const workspaceOwnerCount = await this.userRepo.roleCountByWorkspaceId(
-      UserRole.OWNER,
-      workspaceId,
-    );
-
-    if (user.role === UserRole.OWNER && workspaceOwnerCount === 1) {
-      throw new BadRequestException(
-        'There must be at least one workspace owner',
-      );
-    }
-
-    await this.userRepo.updateUser(
-      {
-        role: newRole,
-      },
-      user.id,
-      workspaceId,
-    );
-  }
-
-  async deactivateUser(): Promise<any> {
-    return 'todo';
-  }
 }

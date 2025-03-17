@@ -11,7 +11,6 @@ import { useState } from "react";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { useDisclosure } from "@mantine/hooks";
-import * as React from "react";
 import { useForm, zodResolver } from "@mantine/form";
 import { useTranslation } from "react-i18next";
 

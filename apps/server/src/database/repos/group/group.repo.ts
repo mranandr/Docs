@@ -15,7 +15,9 @@ import { DefaultGroup } from '../../../core/group/dto/create-group.dto';
 
 @Injectable()
 export class GroupRepo {
-  constructor(@InjectKysely() private readonly db: KyselyDB) {}
+  constructor(@InjectKysely() private readonly db: KyselyDB) {
+    
+  }
 
   async findById(
     groupId: string,

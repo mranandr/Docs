@@ -26,15 +26,12 @@ api.interceptors.response.use(
           const url = new URL(error.request.responseURL)?.pathname;
           if (url === "/api/auth/collab-token") return;
 
-          // Handle unauthorized error
           redirectToLogin();
           break;
         }
         case 403:
-          // Handle forbidden error
           break;
         case 404:
-          // Handle not found error
           if (
             error.response.data.message
               .toLowerCase()

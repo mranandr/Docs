@@ -22,4 +22,6 @@ export class CreateSpaceDto {
   @MaxLength(50)
   @IsAlphanumeric()
   slug: string;
+
+  
 }

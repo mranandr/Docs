@@ -141,9 +141,7 @@ export class AttachmentService {
         });
 
         if (type === AttachmentType.Avatar) {
-          const user = await this.userRepo.findById(userId, workspaceId, {
-            trx,
-          });
+          const user = await this.userRepo.findById(userId, workspaceId);
 
           oldFileName = user.avatarUrl;
 
@@ -151,7 +149,6 @@ export class AttachmentService {
             { avatarUrl: preparedFile.fileName },
             userId,
             workspaceId,
-            trx,
           );
         } else if (type === AttachmentType.WorkspaceLogo) {
           const workspace = await this.workspaceRepo.findById(workspaceId, {

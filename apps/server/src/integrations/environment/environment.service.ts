@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 export class EnvironmentService {
   constructor(private configService: ConfigService) {}
 
+
+
   getNodeEnv(): string {
     return this.configService.get<string>('NODE_ENV', 'development');
   }
@@ -139,7 +141,7 @@ export class EnvironmentService {
     const cloudConfig = this.configService
       .get<string>('CLOUD', 'false')
       .toLowerCase();
-    return cloudConfig === 'true';
+    return cloudConfig === 'true' ;
   }
 
   isSelfHosted(): boolean {

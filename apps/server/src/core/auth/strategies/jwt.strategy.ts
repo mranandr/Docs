@@ -16,19 +16,27 @@ import { FastifyRequest } from 'fastify';
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private logger = new Logger('JwtStrategy');
 
+
   constructor(
     private userRepo: UserRepo,
     private workspaceRepo: WorkspaceRepo,
     private readonly environmentService: EnvironmentService,
   ) {
+
+    const secretKey = environmentService.getAppSecret();
+    if (!secretKey) {
+      throw new Error('JWT secret key is not set. Please check environment variables.');
+    }
+    
     super({
       jwtFromRequest: (req: FastifyRequest) => {
         return req.cookies?.authToken || this.extractTokenFromHeader(req);
       },
       ignoreExpiration: false,
-      secretOrKey: environmentService.getAppSecret(),
+      secretOrKey: secretKey,  
       passReqToCallback: true,
     });
+    
   }
 
   async validate(req: any, payload: JwtPayload) {

@@ -1,4 +1,5 @@
 import api from "@/lib/api-client";
+
 import {
   IChangePassword,
   ICollabToken,
@@ -46,4 +47,24 @@ export async function verifyUserToken(data: IVerifyUserToken): Promise<any> {
 export async function getCollabToken(): Promise<ICollabToken> {
   const req = await api.post<ICollabToken>("/auth/collab-token");
   return req.data;
+}
+
+export async function getUser(token: string, signal?: AbortSignal) {
+  const response = await api.get("/auth/user", {
+    headers: { Authorization: `Bearer ${token}` },
+    signal,
+  });
+  return response.data;
+}
+
+export async function getMicrosoftToken(code: string) {
+  const response = await api.post("/auth/msauth/callback", { code });
+  return response.data;
+}
+
+export async function getCurrentMicrosoftUser(token: string) {
+  const response = await api.get("https://graph.microsoft.com/v1.0/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
 }

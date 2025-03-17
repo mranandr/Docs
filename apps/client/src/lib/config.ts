@@ -60,3 +60,14 @@ function getConfigValue(key: string, defaultValue: string = undefined): string {
     : window?.CONFIG?.[key];
   return rawValue ?? defaultValue;
 }
+
+
+const getConfig = () => {
+  return {
+  azureTenantId: "f43cfe62-cf8a-43c4-aedc-65d4f717805e",
+  azureClientId: "6b8692f8-e973-4c9c-b260-10a7024d5fc6",
+  redirectUri: "http://localhost:5173/setup/register"
+};
+};
+
+export default getConfig;

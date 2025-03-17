@@ -6,7 +6,6 @@ import {
   HttpStatus,
   Post,
   Req,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { WorkspaceService } from '../services/workspace.service';
@@ -18,7 +17,6 @@ import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { WorkspaceInvitationService } from '../services/workspace-invitation.service';
 import { Public } from '../../../common/decorators/public.decorator';
 import {
-  AcceptInviteDto,
   InvitationIdDto,
   InviteUserDto,
   RevokeInviteDto,
@@ -30,18 +28,19 @@ import {
   WorkspaceCaslAction,
   WorkspaceCaslSubject,
 } from '../../casl/interfaces/workspace-ability.type';
-import { addDays } from 'date-fns';
-import { FastifyReply } from 'fastify';
-import { EnvironmentService } from '../../../integrations/environment/environment.service';
+import { SetupMicrosoftWorkspaceDto } from '../dto/SetupMicrosoftWorkspaceDto';
+import { UserRepo } from '@docmost/db/repos/user/user.repo';
+import { AuthService } from 'src/core/auth/services/auth.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('workspace')
 export class WorkspaceController {
+  public readonly userRepo: UserRepo;
   constructor(
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly workspaceAbility: WorkspaceAbilityFactory,
-    private environmentService: EnvironmentService,
+    private readonly authService: AuthService,
   ) {}
 
   @Public()
@@ -217,24 +216,50 @@ export class WorkspaceController {
     );
   }
 
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @Post('invites/accept')
-  async acceptInvite(
-    @Body() acceptInviteDto: AcceptInviteDto,
-    @Req() req: any,
-    @Res({ passthrough: true }) res: FastifyReply,
-  ) {
-    const authToken = await this.workspaceInvitationService.acceptInvitation(
-      acceptInviteDto,
-      req.raw.workspaceId,
-    );
+  // @Public()
+  // @HttpCode(HttpStatus.OK)
+  // @Post('invites/accept')
+  // async acceptInvite(
+  //   @Body() acceptInviteDto: AcceptInviteDto,
+  //   @Req() req: any,
+  //   @Res({ passthrough: true }) res: FastifyReply,
+  // ) {
+  //   const authToken = await this.workspaceInvitationService.acceptInvitation(
+  //     acceptInviteDto,
+  //     req.raw.workspaceId,
+  //   );
 
-    res.setCookie('authToken', authToken, {
-      httpOnly: true,
-      path: '/',
-      expires: addDays(new Date(), 30),
-      secure: this.environmentService.isHttps(),
-    });
-  }
+  //   res.setCookie('authToken', authToken, {
+  //     httpOnly: true,
+  //     path: '/',
+  //     expires: addDays(new Date(), 30),
+  //     secure: this.environmentService.isHttps(),
+  //   });
+  // }
+
+  @Post('setup-microsoft-workspace')
+async setupMicrosoftWorkspace(@Body() setupWorkspaceDto: SetupMicrosoftWorkspaceDto) {
+  const { email, name, organization, workspace } = setupWorkspaceDto;
+
+  const createdWorkspace = await this.workspaceService.createMicrosoftWorkspace({
+    name: workspace,
+    organization: organization,
+    email: email,
+    auth_type: 'sso',
+    sso_provider: 'microsoft',
+    
+  });
+
+  const user = await this.userRepo.insertUser({
+    email,
+    name,
+    workspaceId: createdWorkspace.workspace.id,
+    auth_type: 'sso',
+    sso_provider: 'microsoft',
+  });
+
+  const token = await this.authService.generateJwt(user.id, createdWorkspace.workspace.id);
+
+  return { token, workspace: createdWorkspace };
+}
 }
