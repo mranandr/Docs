@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { Transform, TransformFnParams} from 'class-transformer';
+import { Transform, TransformFnParams } from 'class-transformer';
 
 export class CreateUserDto {
   @IsOptional()
@@ -20,31 +20,9 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @MinLength(8)
+  @MaxLength(70)
   @IsString()
   password: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  avatarUrl: string;
-  
-  @IsNotEmpty()
-  @IsString()
-  authProvider: 'microsoft' | 'jwt';  
-  
-  @IsOptional()
-  @IsString()
-  role: string;
-
- @IsString()
- locale?: string;
-
-
- @IsString()
- settings?: any;
-
- @IsString()
- timezone?: string
 }

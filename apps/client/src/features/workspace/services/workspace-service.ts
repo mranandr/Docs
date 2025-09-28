@@ -5,16 +5,27 @@ import {
   IInvitation,
   IWorkspace,
   IAcceptInvite,
+  IPublicWorkspace,
+  IInvitationLink,
+  IVersion,
 } from "../types/workspace.types";
 import { IPagination, QueryParams } from "@/lib/types.ts";
+import { ISetupWorkspace } from "@/features/auth/types/auth.types.ts";
 
 export async function getWorkspace(): Promise<IWorkspace> {
   const req = await api.post<IWorkspace>("/workspace/info");
   return req.data;
 }
 
-export async function getWorkspacePublicData(): Promise<IWorkspace> {
-  const req = await api.post<IWorkspace>("/workspace/public");
+export async function getWorkspacePublicData(): Promise<IPublicWorkspace> {
+  const req = await api.post<IPublicWorkspace>("/workspace/public");
+  return req.data;
+}
+
+export async function getCheckHostname(
+  hostname: string,
+): Promise<{ hostname: string }> {
+  const req = await api.post("/workspace/check-hostname", { hostname });
   return req.data;
 }
 
@@ -23,6 +34,12 @@ export async function getWorkspaceMembers(
 ): Promise<IPagination<IUser>> {
   const req = await api.post("/workspace/members", params);
   return req.data;
+}
+
+export async function deleteWorkspaceMember(data: {
+  userId: string;
+}): Promise<void> {
+  await api.post("/workspace/members/delete", data);
 }
 
 export async function updateWorkspace(data: Partial<IWorkspace>) {
@@ -49,14 +66,21 @@ export async function createInvitation(data: ICreateInvite) {
   return req.data;
 }
 
-export async function acceptInvitation(data: IAcceptInvite): Promise<void> {
-  await api.post<void>("/workspace/invites/accept", data);
+export async function acceptInvitation(data: IAcceptInvite): Promise<{ requiresLogin?: boolean; }> {
+  const req = await api.post("/workspace/invites/accept", data);
+  return req.data;
+}
+
+export async function getInviteLink(data: {
+  invitationId: string;
+}): Promise<IInvitationLink> {
+  const req = await api.post("/workspace/invites/link", data);
+  return req.data;
 }
 
 export async function resendInvitation(data: {
   invitationId: string;
 }): Promise<void> {
-  console.log(data);
   await api.post("/workspace/invites/resend", data);
 }
 
@@ -73,15 +97,15 @@ export async function getInvitationById(data: {
   return req.data;
 }
 
-export async function uploadLogo(file: File) {
-  const formData = new FormData();
-  formData.append("type", "workspace-logo");
-  formData.append("image", file);
-
-  const req = await api.post("/attachments/upload-image", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+export async function createWorkspace(
+  data: ISetupWorkspace,
+): Promise<{ workspace: IWorkspace } & { exchangeToken: string }> {
+  const req = await api.post("/workspace/create", data);
   return req.data;
 }
+
+export async function getAppVersion(): Promise<IVersion> {
+  const req = await api.post("/version");
+  return req.data;
+}
+

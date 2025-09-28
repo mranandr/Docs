@@ -9,7 +9,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('name', 'varchar', (col) => col)
     .addColumn('email', 'varchar', (col) => col.notNull())
     .addColumn('email_verified_at', 'timestamptz', (col) => col)
-    .addColumn('password', 'varchar', (col) => col) 
+    .addColumn('password', 'varchar', (col) => col)
     .addColumn('avatar_url', 'varchar', (col) => col)
     .addColumn('role', 'varchar', (col) => col)
     .addColumn('invited_by_id', 'uuid', (col) =>
@@ -27,12 +27,6 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )
-    .addColumn('auth_service', 'varchar', (col) =>
-      col.notNull().check(sql`auth_service IN ('jwt', 'sso', 'microsoft')`),
-    )    
-    .addColumn('sso_provider', 'varchar', (col) => col) 
-    .addColumn('auth_type', 'varchar', (col) => col)
-    .addColumn('sso_id', 'varchar', (col) => col.unique()) 
     .addColumn('updated_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )
@@ -42,15 +36,8 @@ export async function up(db: Kysely<any>): Promise<void> {
       'workspace_id',
     ])
     .execute();
-
-  await db.schema
-    .createIndex('idx_users_auth_service')
-    .on('users')
-    .columns(['auth_service'])
-    .execute();
 }
 
 export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropIndex('idx_users_auth_service').execute();
   await db.schema.dropTable('users').execute();
 }

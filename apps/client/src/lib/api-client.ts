@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import APP_ROUTE from "@/lib/app-route.ts";
+import { isCloud } from "@/lib/config.ts";
 
 const api: AxiosInstance = axios.create({
   baseURL: "/api",
@@ -25,20 +26,27 @@ api.interceptors.response.use(
         case 401: {
           const url = new URL(error.request.responseURL)?.pathname;
           if (url === "/api/auth/collab-token") return;
+          if (window.location.pathname.startsWith("/share/")) return;
 
+          // Handle unauthorized error
           redirectToLogin();
           break;
         }
         case 403:
+          // Handle forbidden error
           break;
         case 404:
+          // Handle not found error
           if (
             error.response.data.message
               .toLowerCase()
               .includes("workspace not found")
           ) {
             console.log("workspace not found");
-            if (window.location.pathname != APP_ROUTE.AUTH.SETUP) {
+            if (
+              !isCloud() &&
+              window.location.pathname != APP_ROUTE.AUTH.SETUP
+            ) {
               window.location.href = APP_ROUTE.AUTH.SETUP;
             }
           }

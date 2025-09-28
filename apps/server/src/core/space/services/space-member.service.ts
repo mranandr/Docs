@@ -17,10 +17,9 @@ import { PaginationResult } from '@docmost/db/pagination/pagination';
 
 @Injectable()
 export class SpaceMemberService {
-  private spaceMemberRepo: SpaceMemberRepo;
-  private spaceRepo: SpaceRepo;
   constructor(
- 
+    private spaceMemberRepo: SpaceMemberRepo,
+    private spaceRepo: SpaceRepo,
     @InjectKysely() private readonly db: KyselyDB,
   ) {}
 

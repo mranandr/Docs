@@ -20,12 +20,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 
 @Injectable()
 export class SpaceService {
-  private readonly spaceRepo: SpaceRepo;
-
   constructor(
-    private readonly spaceMemberService: SpaceMemberService,
+    private spaceRepo: SpaceRepo,
+    private spaceMemberService: SpaceMemberService,
     @InjectKysely() private readonly db: KyselyDB,
-    @InjectQueue(QueueName.ATTACHMENT_QUEUE) private readonly attachmentQueue: Queue,
+    @InjectQueue(QueueName.ATTACHMENT_QUEUE) private attachmentQueue: Queue,
   ) {}
 
   async createSpace(

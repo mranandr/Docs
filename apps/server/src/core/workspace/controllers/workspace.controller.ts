@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { WorkspaceService } from '../services/workspace.service';
@@ -17,6 +18,7 @@ import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { WorkspaceInvitationService } from '../services/workspace-invitation.service';
 import { Public } from '../../../common/decorators/public.decorator';
 import {
+  AcceptInviteDto,
   InvitationIdDto,
   InviteUserDto,
   RevokeInviteDto,
@@ -28,19 +30,19 @@ import {
   WorkspaceCaslAction,
   WorkspaceCaslSubject,
 } from '../../casl/interfaces/workspace-ability.type';
-import { SetupMicrosoftWorkspaceDto } from '../dto/SetupMicrosoftWorkspaceDto';
-import { UserRepo } from '@docmost/db/repos/user/user.repo';
-import { AuthService } from 'src/core/auth/services/auth.service';
+import { FastifyReply } from 'fastify';
+import { EnvironmentService } from '../../../integrations/environment/environment.service';
+import { CheckHostnameDto } from '../dto/check-hostname.dto';
+import { RemoveWorkspaceUserDto } from '../dto/remove-workspace-user.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('workspace')
 export class WorkspaceController {
-  public readonly userRepo: UserRepo;
   constructor(
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceInvitationService: WorkspaceInvitationService,
     private readonly workspaceAbility: WorkspaceAbilityFactory,
-    private readonly authService: AuthService,
+    private environmentService: EnvironmentService,
   ) {}
 
   @Public()
@@ -59,7 +61,8 @@ export class WorkspaceController {
   @HttpCode(HttpStatus.OK)
   @Post('update')
   async updateWorkspace(
-    @Body() updateWorkspaceDto: UpdateWorkspaceDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+    @Body() dto: UpdateWorkspaceDto,
     @AuthUser() user: User,
     @AuthWorkspace() workspace: Workspace,
   ) {
@@ -70,7 +73,21 @@ export class WorkspaceController {
       throw new ForbiddenException();
     }
 
-    return this.workspaceService.update(workspace.id, updateWorkspaceDto);
+    const updatedWorkspace = await this.workspaceService.update(
+      workspace.id,
+      dto,
+    );
+
+    if (
+      dto.hostname &&
+      dto.hostname === updatedWorkspace.hostname &&
+      workspace.hostname !== updatedWorkspace.hostname
+    ) {
+      // log user out of old hostname
+      res.clearCookie('authToken');
+    }
+
+    return updatedWorkspace;
   }
 
   @HttpCode(HttpStatus.OK)
@@ -101,8 +118,22 @@ export class WorkspaceController {
     ) {
       throw new ForbiddenException();
     }
+  }
 
-    return this.workspaceService.deactivateUser();
+  @HttpCode(HttpStatus.OK)
+  @Post('members/delete')
+  async deleteWorkspaceMember(
+    @Body() dto: RemoveWorkspaceUserDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const ability = this.workspaceAbility.createForUser(user, workspace);
+    if (
+      ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.Member)
+    ) {
+      throw new ForbiddenException();
+    }
+    await this.workspaceService.deleteUser(user, dto.userId, workspace.id);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -148,10 +179,13 @@ export class WorkspaceController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('invites/info')
-  async getInvitationById(@Body() dto: InvitationIdDto, @Req() req: any) {
+  async getInvitationById(
+    @Body() dto: InvitationIdDto,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
     return this.workspaceInvitationService.getInvitationById(
       dto.invitationId,
-      req.raw.workspaceId,
+      workspace,
     );
   }
 
@@ -171,7 +205,7 @@ export class WorkspaceController {
 
     return this.workspaceInvitationService.createInvitation(
       inviteUserDto,
-      workspace.id,
+      workspace,
       user,
     );
   }
@@ -192,7 +226,7 @@ export class WorkspaceController {
 
     return this.workspaceInvitationService.resendInvitation(
       revokeInviteDto.invitationId,
-      workspace.id,
+      workspace,
     );
   }
 
@@ -216,50 +250,67 @@ export class WorkspaceController {
     );
   }
 
-  // @Public()
-  // @HttpCode(HttpStatus.OK)
-  // @Post('invites/accept')
-  // async acceptInvite(
-  //   @Body() acceptInviteDto: AcceptInviteDto,
-  //   @Req() req: any,
-  //   @Res({ passthrough: true }) res: FastifyReply,
-  // ) {
-  //   const authToken = await this.workspaceInvitationService.acceptInvitation(
-  //     acceptInviteDto,
-  //     req.raw.workspaceId,
-  //   );
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('invites/accept')
+  async acceptInvite(
+    @Body() acceptInviteDto: AcceptInviteDto,
+    @AuthWorkspace() workspace: Workspace,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const result = await this.workspaceInvitationService.acceptInvitation(
+      acceptInviteDto,
+      workspace,
+    );
 
-  //   res.setCookie('authToken', authToken, {
-  //     httpOnly: true,
-  //     path: '/',
-  //     expires: addDays(new Date(), 30),
-  //     secure: this.environmentService.isHttps(),
-  //   });
-  // }
+    if (result.requiresLogin) {
+      return {
+        requiresLogin: true,
+      };
+    }
 
-  @Post('setup-microsoft-workspace')
-async setupMicrosoftWorkspace(@Body() setupWorkspaceDto: SetupMicrosoftWorkspaceDto) {
-  const { email, name, organization, workspace } = setupWorkspaceDto;
+    res.setCookie('authToken', result.authToken, {
+      httpOnly: true,
+      path: '/',
+      expires: this.environmentService.getCookieExpiresIn(),
+      secure: this.environmentService.isHttps(),
+    });
 
-  const createdWorkspace = await this.workspaceService.createMicrosoftWorkspace({
-    name: workspace,
-    organization: organization,
-    email: email,
-    auth_type: 'sso',
-    sso_provider: 'microsoft',
-    
-  });
+    return {
+      requiresLogin: false,
+    };
+  }
 
-  const user = await this.userRepo.insertUser({
-    email,
-    name,
-    workspaceId: createdWorkspace.workspace.id,
-    auth_type: 'sso',
-    sso_provider: 'microsoft',
-  });
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/check-hostname')
+  async checkHostname(@Body() checkHostnameDto: CheckHostnameDto) {
+    return this.workspaceService.checkHostname(checkHostnameDto.hostname);
+  }
 
-  const token = await this.authService.generateJwt(user.id, createdWorkspace.workspace.id);
+  @HttpCode(HttpStatus.OK)
+  @Post('invites/link')
+  async getInviteLink(
+    @Body() inviteDto: InvitationIdDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    if (this.environmentService.isCloud()) {
+      throw new ForbiddenException();
+    }
 
-  return { token, workspace: createdWorkspace };
-}
+    const ability = this.workspaceAbility.createForUser(user, workspace);
+    if (
+      ability.cannot(WorkspaceCaslAction.Manage, WorkspaceCaslSubject.Member)
+    ) {
+      throw new ForbiddenException();
+    }
+    const inviteLink =
+      await this.workspaceInvitationService.getInvitationLinkById(
+        inviteDto.invitationId,
+        workspace,
+      );
+
+    return { inviteLink };
+  }
 }

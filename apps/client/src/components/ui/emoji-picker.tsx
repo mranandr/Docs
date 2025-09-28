@@ -15,6 +15,11 @@ export interface EmojiPickerInterface {
   icon: ReactNode;
   removeEmojiAction: () => void;
   readOnly: boolean;
+  actionIconProps?: {
+    size?: string;
+    variant?: string;
+    c?: string;
+  };
 }
 
 function EmojiPicker({
@@ -22,6 +27,7 @@ function EmojiPicker({
   icon,
   removeEmojiAction,
   readOnly,
+  actionIconProps,
 }: EmojiPickerInterface) {
   const { t } = useTranslation();
   const [opened, handlers] = useDisclosure(false);
@@ -64,12 +70,17 @@ function EmojiPicker({
       closeOnEscape={true}
     >
       <Popover.Target ref={setTarget}>
-        <ActionIcon c="gray" variant="transparent" onClick={handlers.toggle}>
+        <ActionIcon 
+          c={actionIconProps?.c || "gray"} 
+          variant={actionIconProps?.variant || "transparent"} 
+          size={actionIconProps?.size}
+          onClick={handlers.toggle}
+        >
           {icon}
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown bg="000" style={{ border: "none" }} ref={setDropdown}>
-        <Suspense fallback={null}>
+      <Suspense fallback={null}>
+        <Popover.Dropdown bg="000" style={{ border: "none" }} ref={setDropdown}>
           <Picker
             data={async () => (await import("@emoji-mart/data")).default}
             onEmojiSelect={handleEmojiSelect}
@@ -77,22 +88,22 @@ function EmojiPicker({
             skinTonePosition="search"
             theme={colorScheme}
           />
-        </Suspense>
-        <Button
-          variant="default"
-          c="gray"
-          size="xs"
-          style={{
-            position: "absolute",
-            zIndex: 2,
-            bottom: "1rem",
-            right: "1rem",
-          }}
-          onClick={handleRemoveEmoji}
-        >
-          {t("Remove")}
-        </Button>
-      </Popover.Dropdown>
+          <Button
+            variant="default"
+            c="gray"
+            size="xs"
+            style={{
+              position: "absolute",
+              zIndex: 2,
+              bottom: "1rem",
+              right: "1rem",
+            }}
+            onClick={handleRemoveEmoji}
+          >
+            {t("Remove")}
+          </Button>
+        </Popover.Dropdown>
+      </Suspense>
     </Popover>
   );
 }

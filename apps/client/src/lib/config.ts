@@ -1,4 +1,6 @@
 import bytes from "bytes";
+import { castToBoolean } from "@/lib/utils.tsx";
+import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
 
 declare global {
   interface Window {
@@ -14,27 +16,40 @@ export function getAppUrl(): string {
   return `${window.location.protocol}//${window.location.host}`;
 }
 
+export function getServerAppUrl(): string {
+  return getConfigValue("APP_URL");
+}
+
 export function getBackendUrl(): string {
   return getAppUrl() + "/api";
 }
 
 export function getCollaborationUrl(): string {
-  const COLLAB_PATH = "/collab";
+  const baseUrl =
+    getConfigValue("COLLAB_URL") ||
+    (import.meta.env.DEV ? process.env.APP_URL : getAppUrl());
 
-  let url = getAppUrl();
-  if (import.meta.env.DEV) {
-    url = process.env.APP_URL;
-  }
-
-  const wsProtocol = url.startsWith("https") ? "wss" : "ws";
-  return `${wsProtocol}://${url.split("://")[1]}${COLLAB_PATH}`;
+  const collabUrl = new URL("/collab", baseUrl);
+  collabUrl.protocol = collabUrl.protocol === "https:" ? "wss:" : "ws:";
+  return collabUrl.toString();
 }
 
-export function getAvatarUrl(avatarUrl: string) {
+export function getSubdomainHost(): string {
+  return getConfigValue("SUBDOMAIN_HOST");
+}
+
+export function isCloud(): boolean {
+  return castToBoolean(getConfigValue("CLOUD"));
+}
+
+export function getAvatarUrl(
+  avatarUrl: string,
+  type: AvatarIconType = AvatarIconType.AVATAR,
+) {
   if (!avatarUrl) return null;
   if (avatarUrl?.startsWith("http")) return avatarUrl;
 
-  return getBackendUrl() + "/attachments/img/avatar/" + avatarUrl;
+  return getBackendUrl() + `/attachments/img/${type}/` + encodeURI(avatarUrl);
 }
 
 export function getSpaceUrl(spaceSlug: string) {
@@ -42,7 +57,16 @@ export function getSpaceUrl(spaceSlug: string) {
 }
 
 export function getFileUrl(src: string) {
-  return src?.startsWith("/files/") ? getBackendUrl() + src : src;
+  if (!src) return src;
+  if (src.startsWith("http")) return src;
+  if (src.startsWith("/api/")) {
+    // Remove the '/api' prefix
+    return getBackendUrl() + src.substring(4);
+  }
+  if (src.startsWith("/files/")) {
+    return getBackendUrl() + src;
+  }
+  return src;
 }
 
 export function getFileUploadSizeLimit() {
@@ -50,8 +74,29 @@ export function getFileUploadSizeLimit() {
   return bytes(limit);
 }
 
+export function getFileImportSizeLimit() {
+  const limit = getConfigValue("FILE_IMPORT_SIZE_LIMIT", "200mb");
+  return bytes(limit);
+}
+
 export function getDrawioUrl() {
   return getConfigValue("DRAWIO_URL", "https://embed.diagrams.net");
+}
+
+export function getBillingTrialDays() {
+  return getConfigValue("BILLING_TRIAL_DAYS");
+}
+
+export function getPostHogHost() {
+  return getConfigValue("POSTHOG_HOST");
+}
+
+export function isPostHogEnabled(): boolean {
+  return Boolean(getPostHogHost() && getPostHogKey());
+}
+
+export function getPostHogKey() {
+  return getConfigValue("POSTHOG_KEY");
 }
 
 function getConfigValue(key: string, defaultValue: string = undefined): string {
@@ -60,14 +105,3 @@ function getConfigValue(key: string, defaultValue: string = undefined): string {
     : window?.CONFIG?.[key];
   return rawValue ?? defaultValue;
 }
-
-
-const getConfig = () => {
-  return {
-  azureTenantId: "f43cfe62-cf8a-43c4-aedc-65d4f717805e",
-  azureClientId: "6b8692f8-e973-4c9c-b260-10a7024d5fc6",
-  redirectUri: "http://localhost:5173/setup/register"
-};
-};
-
-export default getConfig;

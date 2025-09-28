@@ -1,5 +1,4 @@
-
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
   FastifyAdapter,
@@ -7,9 +6,9 @@ import {
 } from '@nestjs/platform-fastify';
 import { Logger, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { TransformHttpResponseInterceptor } from './common/interceptors/http-response.interceptor';
-import fastifyMultipart from '@fastify/multipart';
 import { WsRedisIoAdapter } from './ws/adapter/ws-redis.adapter';
 import { InternalLogFilter } from './common/logger/internal-log-filter';
+import fastifyMultipart from '@fastify/multipart';
 import fastifyCookie from '@fastify/cookie';
 
 async function bootstrap() {
@@ -18,47 +17,60 @@ async function bootstrap() {
     new FastifyAdapter({
       ignoreTrailingSlash: true,
       ignoreDuplicateSlashes: true,
-      maxParamLength: 500,
+      maxParamLength: 1000,
       trustProxy: true,
     }),
     {
+      rawBody: true,
       logger: new InternalLogFilter(),
     },
   );
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ['robots.txt', 'share/:shareId/p/:pageSlug'],
+  });
 
+  const reflector = app.get(Reflector);
   const redisIoAdapter = new WsRedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
 
   app.useWebSocketAdapter(redisIoAdapter);
 
-  await app.register(fastifyMultipart as any);
-  await app.register(fastifyCookie as any);
+  await app.register(fastifyMultipart);
+  await app.register(fastifyCookie);
 
   app
     .getHttpAdapter()
     .getInstance()
+    .decorateReply('setHeader', function (name: string, value: unknown) {
+      this.header(name, value);
+    })
+    .decorateReply('end', function () {
+      this.send('');
+    })
     .addHook('preHandler', function (req, reply, done) {
-      const publicRoutes = [
+      // don't require workspaceId for the following paths
+      const excludedPaths = [
         '/api/auth/setup',
         '/api/health',
-        '/api/auth/mscallback', // Add any other public routes here
+        '/api/billing/stripe/webhook',
+        '/api/workspace/check-hostname',
+        '/api/sso/google',
+        '/api/workspace/create',
+        '/api/workspace/joined',
       ];
 
-      // Check if the request URL matches any public route
-      const isPublicRoute = publicRoutes.some((route) =>
-        req.originalUrl.startsWith(route),
-      );
-
-      // If the request is not a public route, check for workspaceId
-      if (req.originalUrl.startsWith('/api') && !isPublicRoute) {
-        if (!req.raw?.['workspaceId']) {
+      if (
+        req.originalUrl.startsWith('/api') &&
+        !excludedPaths.some((path) => req.originalUrl.startsWith(path))
+      ) {
+        if (!req.raw?.['workspaceId'] && req.originalUrl !== '/api') {
           throw new NotFoundException('Workspace not found');
         }
+        done();
+      } else {
+        done();
       }
-
-      done();
     });
 
   app.useGlobalPipes(
@@ -68,19 +80,20 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.enableCors({
-    origin: 'http://localhost:5173', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  });
 
-
-
-  app.useGlobalInterceptors(new TransformHttpResponseInterceptor());
+  app.enableCors();
+  app.useGlobalInterceptors(new TransformHttpResponseInterceptor(reflector));
   app.enableShutdownHooks();
 
   const logger = new Logger('NestApplication');
+
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`UnhandledRejection, reason: ${reason}`, promise);
+  });
+
+  process.on('uncaughtException', (error) => {
+    logger.error('UncaughtException:', error);
+  });
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0', () => {

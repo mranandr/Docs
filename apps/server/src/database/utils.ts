@@ -1,5 +1,4 @@
 import { KyselyDB, KyselyTransaction } from './types/kysely.types';
-import jwt from 'jsonwebtoken';
 
 /*
  * Executes a transaction or a callback using the provided database instance.
@@ -17,16 +16,6 @@ export async function executeTx<T>(
     return await db.transaction().execute((trx) => callback(trx)); // Start new transaction and execute callback
   }
 }
-
-export const checkJWT = (token: string): boolean => {
-  try {
-    jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
-    return true;
-  } catch (error) {
-    console.error('Invalid token', error);
-    return false;
-  }
-};
 
 /*
  * This function returns either an existing transaction if provided,

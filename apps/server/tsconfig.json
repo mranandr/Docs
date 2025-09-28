@@ -22,8 +22,7 @@
     "paths": {
       "@docmost/db/*": ["./src/database/*"],
       "@docmost/transactional/*": ["./src/integrations/transactional/*"],
-      "@docmost/editor-ext/*": ["./src/collaboration/editor-ext/*"]
-
+      "@docmost/ee/*": ["./src/ee/*"]
     }
   }
 }

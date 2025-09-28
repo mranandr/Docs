@@ -4,7 +4,7 @@ import {
   useWorkspaceMembersQuery,
 } from "@/features/workspace/queries/workspace-query.ts";
 import { CustomAvatar } from "@/components/ui/custom-avatar.tsx";
-import React, { useCallback, useRef, useState } from "react";
+import React from "react";
 import RoleSelectMenu from "@/components/ui/role-select-menu.tsx";
 import {
   getUserRoleLabel,
@@ -17,6 +17,7 @@ import Paginate from "@/components/common/paginate.tsx";
 import { SearchInput } from "@/components/common/search-input.tsx";
 import NoTableResults from "@/components/common/no-table-results.tsx";
 import { usePaginateAndSearch } from "@/hooks/use-paginate-and-search.tsx";
+import MemberActionMenu from "@/features/workspace/components/members/components/members-action-menu.tsx";
 
 export default function WorkspaceMembersTable() {
   const { t } = useTranslation();
@@ -53,7 +54,7 @@ export default function WorkspaceMembersTable() {
   return (
     <>
       <SearchInput onSearch={handleSearch} />
-      <Table.ScrollContainer minWidth={500}>
+      <Table.ScrollContainer minWidth={600}>
         <Table highlightOnHover verticalSpacing="sm">
           <Table.Thead>
             <Table.Tr>
@@ -95,6 +96,9 @@ export default function WorkspaceMembersTable() {
                       }
                       disabled={!isAdmin}
                     />
+                  </Table.Td>
+                  <Table.Td>
+                    {isAdmin && <MemberActionMenu userId={user.id} />}
                   </Table.Td>
                 </Table.Tr>
               ))

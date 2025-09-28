@@ -35,4 +35,27 @@ export interface ISuggestionResult {
 export interface IPageSearchParams {
   query: string;
   spaceId?: string;
+  shareId?: string;
+}
+
+export interface IAttachmentSearch {
+  id: string;
+  fileName: string;
+  pageId: string;
+  creatorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  rank: string;
+  highlight: string;
+  space: {
+    id: string;
+    name: string;
+    slug: string;
+    icon: string;
+  };
+  page: {
+    id: string;
+    title: string;
+    slugId: string;
+  };
 }

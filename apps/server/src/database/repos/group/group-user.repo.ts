@@ -6,19 +6,19 @@ import {
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB, KyselyTransaction } from '@docmost/db/types/kysely.types';
 import { dbOrTx, executeTx } from '@docmost/db/utils';
+import { sql } from 'kysely';
 import { GroupUser, InsertableGroupUser } from '@docmost/db/types/entity.types';
 import { PaginationOptions } from '../../pagination/pagination-options';
 import { executeWithPagination } from '@docmost/db/pagination/pagination';
 import { GroupRepo } from '@docmost/db/repos/group/group.repo';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
-import { Inject } from '@nestjs/common';
 
 @Injectable()
 export class GroupUserRepo {
   constructor(
     @InjectKysely() private readonly db: KyselyDB,
     private readonly groupRepo: GroupRepo,
-    private readonly userRepo: UserRepo, 
+    private readonly userRepo: UserRepo,
   ) {}
 
   async getGroupUserById(
@@ -57,7 +57,7 @@ export class GroupUserRepo {
 
     if (pagination.query) {
       query = query.where((eb) =>
-        eb('users.name', 'ilike', `%${pagination.query}%`),
+        eb(sql`f_unaccent(users.name)`, 'ilike', sql`f_unaccent(${'%' + pagination.query + '%'})`),
       );
     }
 
@@ -89,7 +89,9 @@ export class GroupUserRepo {
           throw new NotFoundException('Group not found');
         }
 
-        const user = await this.userRepo.findById(userId, workspaceId);
+        const user = await this.userRepo.findById(userId, workspaceId, {
+          trx: trx,
+        });
 
         if (!user) {
           throw new NotFoundException('User not found');

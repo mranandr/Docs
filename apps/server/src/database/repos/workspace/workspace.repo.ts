@@ -26,6 +26,13 @@ export class WorkspaceRepo {
     'createdAt',
     'updatedAt',
     'deletedAt',
+    'stripeCustomerId',
+    'status',
+    'billingEmail',
+    'trialEndAt',
+    'enforceSso',
+    'plan',
+    'enforceMfa',
   ];
   constructor(@InjectKysely() private readonly db: KyselyDB) {}
 
@@ -49,6 +56,10 @@ export class WorkspaceRepo {
       query = query.select(this.withMemberCount);
     }
 
+    if (opts?.withLicenseKey) {
+      query = query.select('licenseKey');
+    }
+
     if (opts?.withLock && opts?.trx) {
       query = query.forUpdate();
     }
@@ -60,7 +71,7 @@ export class WorkspaceRepo {
     return await this.db
       .selectFrom('workspaces')
       .selectAll()
-      .orderBy('createdAt asc')
+      .orderBy('createdAt', 'asc')
       .limit(1)
       .executeTakeFirst();
   }

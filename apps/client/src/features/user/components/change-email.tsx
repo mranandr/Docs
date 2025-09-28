@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useAtom } from "jotai";
 import { currentUserAtom } from "@/features/user/atoms/current-user-atom.ts";
 import { useDisclosure } from "@mantine/hooks";
+import * as React from "react";
 import { useForm, zodResolver } from "@mantine/form";
 import { useTranslation } from "react-i18next";
 
@@ -21,7 +22,7 @@ export default function ChangeEmail() {
 
   return (
     <Group justify="space-between" wrap="nowrap" gap="xl">
-      <div>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <Text size="md">{t("Email")}</Text>
         <Text size="sm" c="dimmed">
           {currentUser?.user.email}
@@ -29,7 +30,7 @@ export default function ChangeEmail() {
       </div>
 
       {/*
-      <Button onClick={open} variant="default">
+      <Button onClick={open} variant="default" style={{ whiteSpace: "nowrap" }}>
         {t("Change email")}
       </Button>
       */}
@@ -69,7 +70,6 @@ function ChangeEmailForm() {
 
   function handleSubmit(data: FormValues) {
     setIsLoading(true);
-    console.log(data);
   }
 
   return (

@@ -2,7 +2,6 @@ import { Kysely, sql } from 'kysely';
 import { UserRole } from '../../common/helpers/types/permission';
 
 export async function up(db: Kysely<any>): Promise<void> {
-  
   await db.schema
     .createTable('workspaces')
     .addColumn('id', 'uuid', (col) =>
@@ -19,7 +18,6 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .addColumn('email_domains', sql`varchar[]`, (col) => col.defaultTo('{}'))
     .addColumn('default_space_id', 'uuid', (col) => col)
-    .addColumn('organization', 'varchar', (col) => col.notNull()) 
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )

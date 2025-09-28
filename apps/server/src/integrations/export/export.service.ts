@@ -10,18 +10,16 @@ import { ExportFormat } from './dto/export-dto';
 import { Page } from '@docmost/db/types/entity.types';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
-import JSZip from 'jszip';
+import * as JSZip from 'jszip';
 import { StorageService } from '../storage/storage.service';
 import {
   buildTree,
   computeLocalPath,
-  getAttachmentIds,
   getExportExtension,
   getPageTitle,
-  getProsemirrorContent,
   PageExportTree,
   replaceInternalLinks,
-  updateAttachmentUrls,
+  updateAttachmentUrlsToLocalPaths,
 } from './utils';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { Node } from '@tiptap/pm/model';
@@ -29,6 +27,10 @@ import { EditorState } from '@tiptap/pm/state';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import slugify = require('@sindresorhus/slugify');
 import { EnvironmentService } from '../environment/environment.service';
+import {
+  getAttachmentIds,
+  getProsemirrorContent,
+} from '../../common/helpers/prosemirror/utils';
 
 @Injectable()
 export class ExportService {
@@ -77,14 +79,38 @@ export class ExportService {
     }
 
     if (format === ExportFormat.Markdown) {
-      return turndown(pageHtml);
+      const newPageHtml = pageHtml.replace(
+        /<colgroup[^>]*>[\s\S]*?<\/colgroup>/gim,
+        '',
+      );
+      return turndown(newPageHtml);
     }
 
     return;
   }
 
-  async exportPageWithChildren(pageId: string, format: string) {
-    const pages = await this.pageRepo.getPageAndDescendants(pageId);
+  async exportPages(
+    pageId: string,
+    format: string,
+    includeAttachments: boolean,
+    includeChildren: boolean,
+  ) {
+    let pages: Page[];
+
+    if (includeChildren) {
+      //@ts-ignore
+      pages = await this.pageRepo.getPageAndDescendants(pageId, {
+        includeContent: true,
+      });
+    } else {
+      // Only fetch the single page when includeChildren is false
+      const page = await this.pageRepo.findById(pageId, {
+        includeContent: true,
+      });
+      if (page){
+        pages = [page];
+      }
+    }
 
     if (!pages || pages.length === 0) {
       throw new BadRequestException('No pages to export');
@@ -97,7 +123,7 @@ export class ExportService {
     const tree = buildTree(pages as Page[]);
 
     const zip = new JSZip();
-    await this.zipPages(tree, format, zip);
+    await this.zipPages(tree, format, zip, includeAttachments);
 
     const zipFile = zip.generateNodeStream({
       type: 'nodebuffer',
@@ -160,7 +186,7 @@ export class ExportService {
     tree: PageExportTree,
     format: string,
     zip: JSZip,
-    includeAttachments = true,
+    includeAttachments: boolean,
   ): Promise<void> {
     const slugIdToPath: Record<string, string> = {};
 
@@ -192,7 +218,8 @@ export class ExportService {
 
         if (includeAttachments) {
           await this.zipAttachments(updatedJsonContent, page.spaceId, folder);
-          updatedJsonContent = updateAttachmentUrls(updatedJsonContent);
+          updatedJsonContent =
+            updateAttachmentUrlsToLocalPaths(updatedJsonContent);
         }
 
         const pageTitle = getPageTitle(page.title);
@@ -259,14 +286,7 @@ export class ExportService {
 
     const pages = await this.db
       .selectFrom('pages')
-      .select([
-        'id',
-        'slugId',
-        'title',
-        'creatorId',
-        'spaceId',
-        'workspaceId',
-      ])
+      .select(['id', 'slugId', 'title', 'creatorId', 'spaceId', 'workspaceId'])
       .select((eb) => this.pageRepo.withSpace(eb))
       .where('id', 'in', pageMentionIds)
       .where('workspaceId', '=', workspaceId)

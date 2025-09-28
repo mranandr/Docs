@@ -17,7 +17,7 @@ import {
   EventExit,
   EventSave,
 } from "react-drawio";
-import { IAttachment } from "@/lib/types";
+import { IAttachment } from "@/features/attachments/types/attachment.types";
 import { decodeBase64ToSvgString, svgStringToFile } from "@/lib/utils";
 import clsx from "clsx";
 import { IconEdit } from "@tabler/icons-react";
@@ -77,7 +77,7 @@ export default function DrawioView(props: NodeViewProps) {
     }
 
     updateAttributes({
-      src: `/files/${attachment.id}/${attachment.fileName}?t=${new Date(attachment.updatedAt).getTime()}`,
+      src: `/api/files/${attachment.id}/${attachment.fileName}?t=${new Date(attachment.updatedAt).getTime()}`,
       title: attachment.fileName,
       size: attachment.fileSize,
       attachmentId: attachment.id,
@@ -139,12 +139,13 @@ export default function DrawioView(props: NodeViewProps) {
             )}
           />
 
-          {selected && (
+          {selected && editor.isEditable && (
             <ActionIcon
               onClick={handleOpen}
               variant="default"
               color="gray"
               mx="xs"
+              className="print-hide"
               style={{
                 position: "absolute",
                 top: 8,
