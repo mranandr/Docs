@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ImportService } from './services/import.service';
 import { ImportController } from './import.controller';
 import { StorageModule } from '../storage/storage.module';
@@ -7,6 +7,8 @@ import { FileTaskProcessor } from './processors/file-task.processor';
 import { ImportAttachmentService } from './services/import-attachment.service';
 import { FileTaskController } from './file-task.controller';
 import { PageModule } from '../../core/page/page.module';
+import { AuthModule } from 'src/core/auth/auth.module';
+import { UserModule } from 'src/core/user/user.module';
 
 @Module({
   providers: [
@@ -17,6 +19,9 @@ import { PageModule } from '../../core/page/page.module';
   ],
   exports: [ImportService, ImportAttachmentService],
   controllers: [ImportController, FileTaskController],
-  imports: [StorageModule, PageModule],
+  imports: [StorageModule, PageModule,
+    forwardRef (() => AuthModule),
+    forwardRef (() => UserModule)
+  ],
 })
 export class ImportModule {}

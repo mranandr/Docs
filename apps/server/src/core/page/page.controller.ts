@@ -22,7 +22,6 @@ import {
 import { PageHistoryService } from './services/page-history.service';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import { SidebarPageDto } from './dto/sidebar-page.dto';
@@ -35,8 +34,9 @@ import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { RecentPageDto } from './dto/recent-page.dto';
 import { DuplicatePageDto } from './dto/duplicate-page.dto';
 import { DeletedPageDto } from './dto/deleted-page.dto';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('pages')
 export class PageController {
   constructor(

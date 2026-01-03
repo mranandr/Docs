@@ -5,21 +5,21 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { TokenService } from '../../core/auth/services/token.service';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { findHighestUserSpaceRole } from '@docmost/db/repos/space/utils';
 import { SpaceRole } from '../../common/helpers/types/permission';
 import { getPageId } from '../collaboration.util';
-import { JwtCollabPayload, JwtType } from '../../core/auth/dto/jwt-payload';
+import { JwtType, JwtCollabPayload } from 'src/core/auth/auth.util'; 
+import { KeycloakTokenService } from 'src/core/auth/token.service';
 
 @Injectable()
 export class AuthenticationExtension implements Extension {
   private readonly logger = new Logger(AuthenticationExtension.name);
 
   constructor(
-    private tokenService: TokenService,
+    private tokenService: KeycloakTokenService,
     private userRepo: UserRepo,
     private pageRepo: PageRepo,
     private readonly spaceMemberRepo: SpaceMemberRepo,
@@ -32,7 +32,7 @@ export class AuthenticationExtension implements Extension {
     let jwtPayload: JwtCollabPayload;
 
     try {
-      jwtPayload = await this.tokenService.verifyJwt(token, JwtType.COLLAB);
+      jwtPayload = await this.tokenService.verifyToken(token, JwtType.COLLAB);
     } catch (error) {
       throw new UnauthorizedException('Invalid collab token');
     }

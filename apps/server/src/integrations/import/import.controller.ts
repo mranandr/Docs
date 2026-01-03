@@ -11,7 +11,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import {
@@ -24,6 +23,7 @@ import * as path from 'path';
 import { ImportService } from './services/import.service';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { EnvironmentService } from '../environment/environment.service';
+import { KeycloakAuthGuard } from 'src/core/auth/auth.guard';
 
 @Controller()
 export class ImportController {
@@ -36,7 +36,7 @@ export class ImportController {
   ) {}
 
   @UseInterceptors(FileInterceptor)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('pages/import')
   async importPage(
@@ -87,7 +87,7 @@ export class ImportController {
   }
 
   @UseInterceptors(FileInterceptor)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('pages/import-zip')
   async importZip(

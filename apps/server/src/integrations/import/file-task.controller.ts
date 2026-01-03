@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User } from '@docmost/db/types/entity.types';
 import {
   SpaceCaslAction,
@@ -20,6 +19,7 @@ import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { FileTaskIdDto } from './dto/file-task-dto';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
+import { KeycloakAuthGuard } from 'src/core/auth/auth.guard';
 
 @Controller('file-tasks')
 export class FileTaskController {
@@ -29,7 +29,7 @@ export class FileTaskController {
     @InjectKysely() private readonly db: KyselyDB,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post()
   async getFileTasks(@AuthUser() user: User) {
@@ -52,7 +52,7 @@ export class FileTaskController {
     return fileTasks;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('info')
   async getFileTask(@Body() dto: FileTaskIdDto, @AuthUser() user: User) {

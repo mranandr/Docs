@@ -17,15 +17,15 @@ import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { AddGroupUserDto } from './dto/add-group-user.dto';
 import { RemoveGroupUserDto } from './dto/remove-group-user.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
 import {
   WorkspaceCaslAction,
   WorkspaceCaslSubject,
 } from '../casl/interfaces/workspace-ability.type';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('groups')
 export class GroupController {
   constructor(

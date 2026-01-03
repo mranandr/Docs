@@ -22,6 +22,7 @@ export class UserRepo {
     'id',
     'email',
     'name',
+    'mobile',
     'emailVerifiedAt',
     'avatarUrl',
     'role',
@@ -87,7 +88,7 @@ export class UserRepo {
 
     return await db
       .updateTable('users')
-      .set({ ...updatableUser, updatedAt: new Date() })
+      .set({ ...updatableUser, mobile: updatableUser.mobile ?? undefined,  updatedAt: new Date() })
       .where('id', '=', userId)
       .where('workspaceId', '=', workspaceId)
       .execute();
@@ -103,7 +104,7 @@ export class UserRepo {
       .where('workspaceId', '=', workspaceId)
       .execute();
   }
-
+  
   async insertUser(
     insertableUser: InsertableUser,
     trx?: KyselyTransaction,
@@ -114,6 +115,7 @@ export class UserRepo {
       email: insertableUser.email.toLowerCase(),
       password: await hashPassword(insertableUser.password),
       locale: 'en-US',
+      mobile: insertableUser.mobile ?? null,     
       role: insertableUser?.role,
       lastLoginAt: new Date(),
     };
@@ -201,4 +203,13 @@ export class UserRepo {
         .whereRef('userMfa.userId', '=', 'users.id'),
     ).as('mfa');
   }
+
+  async findByEmailCon(email: string): Promise<User> {
+  return this.db
+    .selectFrom("users")
+    .selectAll()
+    .where("email", "=", email.toLowerCase())
+    .executeTakeFirst();
+}
+
 }

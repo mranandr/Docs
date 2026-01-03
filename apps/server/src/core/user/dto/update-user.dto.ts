@@ -8,10 +8,10 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { CreateUserDto } from '../../auth/dto/create-user.dto';
+import { CreateUserDto } from 'src/core/auth/dto/create-user.dto'; 
 
 export class UpdateUserDto extends PartialType(
-  OmitType(CreateUserDto, ['password'] as const),
+  (CreateUserDto),
 ) {
   @IsOptional()
   @IsString()

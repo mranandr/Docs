@@ -9,7 +9,6 @@ import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
 import { nanoIdGen } from '../../common/helpers';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
-import { TokenService } from '../auth/services/token.service';
 import { jsonToNode } from '../../collaboration/collaboration.util';
 import {
   getAttachmentIds,
@@ -23,6 +22,7 @@ import { updateAttachmentAttr } from './share.util';
 import { Page } from '@docmost/db/types/entity.types';
 import { validate as isValidUUID } from 'uuid';
 import { sql } from 'kysely';
+import { KeycloakTokenService } from '../auth/token.service';
 
 @Injectable()
 export class ShareService {
@@ -32,7 +32,7 @@ export class ShareService {
     private readonly shareRepo: ShareRepo,
     private readonly pageRepo: PageRepo,
     @InjectKysely() private readonly db: KyselyDB,
-    private readonly tokenService: TokenService,
+    private readonly tokenService: KeycloakTokenService,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
@@ -69,8 +69,8 @@ export class ShareService {
       return await this.shareRepo.insertShare({
         key: nanoIdGen().toLowerCase(),
         pageId: page.id,
-        includeSubPages: createShareDto.includeSubPages || true,
-        searchIndexing: createShareDto.searchIndexing || true,
+        includeSubPages: createShareDto.includeSubPages ?? false,
+        searchIndexing: createShareDto.searchIndexing ?? false,
         creatorId: authUserId,
         spaceId: page.spaceId,
         workspaceId,

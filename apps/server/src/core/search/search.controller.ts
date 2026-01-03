@@ -16,7 +16,6 @@ import {
   SearchSuggestionDTO,
 } from './dto/search.dto';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import SpaceAbilityFactory from '../casl/abilities/space-ability.factory';
 import {
@@ -27,8 +26,9 @@ import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { ModuleRef } from '@nestjs/core';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('search')
 export class SearchController {
   private readonly logger = new Logger(SearchController.name);

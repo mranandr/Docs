@@ -22,7 +22,6 @@ import { FileInterceptor } from '../../common/interceptors/file.interceptor';
 import * as bytes from 'bytes';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import { StorageService } from '../../integrations/storage/storage.service';
 import {
@@ -49,10 +48,11 @@ import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { AttachmentRepo } from '@docmost/db/repos/attachment/attachment.repo';
 import { validate as isValidUUID } from 'uuid';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
-import { TokenService } from '../auth/services/token.service';
-import { JwtAttachmentPayload, JwtType } from '../auth/dto/jwt-payload';
 import * as path from 'path';
 import { RemoveIconDto } from './dto/attachment.dto';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
+import { JwtAttachmentPayload, JwtType } from '../auth/auth.util';
+import { KeycloakTokenService } from '../auth/token.service';
 
 @Controller()
 export class AttachmentController {
@@ -66,10 +66,10 @@ export class AttachmentController {
     private readonly pageRepo: PageRepo,
     private readonly attachmentRepo: AttachmentRepo,
     private readonly environmentService: EnvironmentService,
-    private readonly tokenService: TokenService,
+    private readonly tokenService: KeycloakTokenService,   
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('files/upload')
   @UseInterceptors(FileInterceptor)
@@ -148,7 +148,7 @@ export class AttachmentController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @Get('/files/:fileId/:fileName')
   async getFile(
     @Res() res: FastifyReply,
@@ -211,7 +211,7 @@ export class AttachmentController {
   ) {
     let jwtPayload: JwtAttachmentPayload = null;
     try {
-      jwtPayload = await this.tokenService.verifyJwt(
+      jwtPayload = await this.tokenService.verifyToken(
         jwtToken,
         JwtType.ATTACHMENT,
       );
@@ -261,7 +261,7 @@ export class AttachmentController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('attachments/upload-image')
   @UseInterceptors(FileInterceptor)
@@ -379,7 +379,7 @@ export class AttachmentController {
     }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('attachments/remove-icon')
   async removeIcon(

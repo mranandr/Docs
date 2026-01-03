@@ -1,15 +1,13 @@
-import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
-import { AuthService } from './services/auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { WorkspaceModule } from '../workspace/workspace.module';
-import { SignupService } from './services/signup.service';
-import { TokenModule } from './token.module';
-
+import { Module, forwardRef } from '@nestjs/common';
+import { UserModule } from '../user/user.module';                  
+import { KeycloakTokenService } from './token.service';
+import { KeycloakAuthGuard } from './auth.guard';
+import { Reflector } from '@nestjs/core';
 @Module({
-  imports: [TokenModule, WorkspaceModule],
-  controllers: [AuthController],
-  providers: [AuthService, SignupService, JwtStrategy],
-  exports: [SignupService],
+  imports: [
+    forwardRef(() => UserModule), 
+  ],
+  providers: [KeycloakTokenService, KeycloakAuthGuard, Reflector],
+  exports: [KeycloakTokenService, KeycloakAuthGuard],
 })
 export class AuthModule {}

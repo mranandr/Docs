@@ -5,13 +5,15 @@ const APP_ROUTE = {
   AUTH: {
     LOGIN: "/login",
     SIGNUP: "/signup",
-    SETUP: "/setup/register",
     FORGOT_PASSWORD: "/forgot-password",
     PASSWORD_RESET: "/password-reset",
     CREATE_WORKSPACE: "/create",
     SELECT_WORKSPACE: "/select",
     MFA_CHALLENGE: "/login/mfa",
     MFA_SETUP_REQUIRED: "/login/mfa/setup",
+  },
+  SETUP: {
+    WORKSPACE: "/setup/workspace",
   },
   SETTINGS: {
     ACCOUNT: {
