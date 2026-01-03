@@ -5,6 +5,8 @@ import * as path from "path";
 export const envPath = path.resolve(process.cwd(), "..", "..");
 
 export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, process.cwd(), "");
+
   const {
     APP_URL,
     FILE_UPLOAD_SIZE_LIMIT,
@@ -43,16 +45,16 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/api": {
-          target: APP_URL,
+          target: env.VITE_API_URL,
           changeOrigin: false,
         },
         "/socket.io": {
-          target: APP_URL,
+          target: env.VITE_API_URL,
           ws: true,
           rewriteWsOrigin: true,
         },
         "/collab": {
-          target: APP_URL,
+          target: env.VITE_API_URL,
           ws: true,
           rewriteWsOrigin: true,
         },

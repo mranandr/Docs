@@ -26,14 +26,14 @@ import {
   UpdateShareDto,
 } from './dto/share.dto';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import { hasLicenseOrEE } from '../../common/helpers';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('shares')
 export class ShareController {
   constructor(

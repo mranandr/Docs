@@ -308,6 +308,7 @@ export interface Users {
   password: string | null;
   role: string | null;
   settings: Json | null;
+  mobile: string | null;
   timezone: string | null;
   updatedAt: Generated<Timestamp>;
   workspaceId: string | null;

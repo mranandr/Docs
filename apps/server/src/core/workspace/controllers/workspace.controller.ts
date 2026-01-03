@@ -23,7 +23,6 @@ import {
   InviteUserDto,
   RevokeInviteDto,
 } from '../dto/invitation.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import WorkspaceAbilityFactory from '../../casl/abilities/workspace-ability.factory';
 import {
@@ -34,8 +33,9 @@ import { FastifyReply } from 'fastify';
 import { EnvironmentService } from '../../../integrations/environment/environment.service';
 import { CheckHostnameDto } from '../dto/check-hostname.dto';
 import { RemoveWorkspaceUserDto } from '../dto/remove-workspace-user.dto';
+import { KeycloakAuthGuard } from 'src/core/auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('workspace')
 export class WorkspaceController {
   constructor(

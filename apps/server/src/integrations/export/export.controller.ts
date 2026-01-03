@@ -14,7 +14,6 @@ import { ExportPageDto, ExportSpaceDto } from './dto/export-dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { User } from '@docmost/db/types/entity.types';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import {
   SpaceCaslAction,
@@ -25,6 +24,7 @@ import { sanitize } from 'sanitize-filename-ts';
 import { getExportExtension } from './utils';
 import { getMimeType } from '../../common/helpers';
 import * as path from 'path';
+import { KeycloakAuthGuard } from 'src/core/auth/auth.guard';
 
 @Controller()
 export class ExportController {
@@ -34,7 +34,7 @@ export class ExportController {
     private readonly spaceAbility: SpaceAbilityFactory,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('pages/export')
   async exportPage(
@@ -73,7 +73,7 @@ export class ExportController {
     res.send(zipFileBuffer);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(KeycloakAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('spaces/export')
   async exportSpace(

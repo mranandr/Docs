@@ -1,13 +1,18 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ShareController } from './share.controller';
 import { ShareService } from './share.service';
-import { TokenModule } from '../auth/token.module';
 import { ShareSeoController } from './share-seo.controller';
+import { KeycloakTokenService } from '../auth/token.service';
+import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
-  imports: [TokenModule],
+  imports: [
+  forwardRef(() => AuthModule),
+  forwardRef(() => UserModule),
+],
   controllers: [ShareController, ShareSeoController],
-  providers: [ShareService],
+  providers: [ShareService, KeycloakTokenService],
   exports: [ShareService],
 })
 export class ShareModule {}

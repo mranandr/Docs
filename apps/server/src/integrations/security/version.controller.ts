@@ -7,10 +7,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { VersionService } from './version.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { EnvironmentService } from '../environment/environment.service';
+import { KeycloakAuthGuard } from 'src/core/auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('version')
 export class VersionController {
   constructor(

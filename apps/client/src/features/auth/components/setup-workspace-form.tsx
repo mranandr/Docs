@@ -6,48 +6,62 @@ import {
   Title,
   TextInput,
   Button,
-  PasswordInput,
   Box,
   Anchor,
   Text,
 } from "@mantine/core";
-import { ISetupWorkspace } from "@/features/auth/types/auth.types";
-import useAuth from "@/features/auth/hooks/use-auth";
 import classes from "@/features/auth/components/auth.module.css";
 import { useTranslation } from "react-i18next";
-import SsoCloudSignup from "@/ee/components/sso-cloud-signup.tsx";
-import { isCloud } from "@/lib/config.ts";
+import SsoCloudSignup from "@/ee/components/sso-cloud-signup";
+import { isCloud } from "@/lib/config";
 import { Link } from "react-router-dom";
-import APP_ROUTE from "@/lib/app-route.ts";
+import APP_ROUTE from "@/lib/app-route";
+import { notifications } from "@mantine/notifications";
+import { createWorkspace } from "@/features/workspace/services/workspace-service";
 
 const formSchema = z.object({
-  workspaceName: z.string().trim().max(50).optional(),
-  name: z.string().min(1).max(50),
-  email: z
+  workspaceName: z
     .string()
-    .min(1, { message: "email is required" })
-    .email({ message: "Invalid email address" }),
-  password: z.string().min(8),
+    .trim()
+    .min(2, { message: "Workspace name is required" })
+    .max(50, { message: "Workspace name too long" }),
 });
+
+export interface ISetupWorkspace {
+  workspaceName: string;
+}
 
 export function SetupWorkspaceForm() {
   const { t } = useTranslation();
-  const { setupWorkspace, isLoading } = useAuth();
-  // useRedirectIfAuthenticated();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<ISetupWorkspace>({
     validate: zodResolver(formSchema),
     initialValues: {
       workspaceName: "",
-      name: "",
-      email: "",
-      password: "",
     },
   });
 
-  async function onSubmit(data: ISetupWorkspace) {
-    await setupWorkspace(data);
-  }
+  const onSubmit = async (data: ISetupWorkspace) => {
+    setIsLoading(true);
+    try {
+      const res = await createWorkspace(data);
+      notifications.show({
+        message: `Workspace "${data.workspaceName}" created successfully!`,
+        color: "green",
+      });
+      // Redirect to login or dashboard
+      window.location.href = APP_ROUTE.AUTH.LOGIN;
+    } catch (err: any) {
+      console.error("Workspace creation failed:", err);
+      notifications.show({
+        message: err?.response?.data?.message || "Failed to create workspace",
+        color: "red",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -60,59 +74,27 @@ export function SetupWorkspaceForm() {
           {isCloud() && <SsoCloudSignup />}
 
           <form onSubmit={form.onSubmit(onSubmit)}>
-            {!isCloud() && (
-              <TextInput
-                id="workspaceName"
-                type="text"
-                label={t("Workspace Name")}
-                placeholder={t("e.g ACME Inc")}
-                variant="filled"
-                mt="md"
-                {...form.getInputProps("workspaceName")}
-              />
-            )}
-
             <TextInput
-              id="name"
+              id="workspaceName"
               type="text"
-              label={t("Your Name")}
-              placeholder={t("enter your full name")}
+              label={t("Workspace Name")}
+              placeholder={t("e.g. ACME Inc")}
               variant="filled"
               mt="md"
-              {...form.getInputProps("name")}
+              {...form.getInputProps("workspaceName")}
             />
 
-            <TextInput
-              id="email"
-              type="email"
-              label={t("Your Email")}
-              placeholder="email@example.com"
-              variant="filled"
-              mt="md"
-              {...form.getInputProps("email")}
-            />
-
-            <PasswordInput
-              label={t("Password")}
-              placeholder={t("Enter a strong password")}
-              variant="filled"
-              mt="md"
-              {...form.getInputProps("password")}
-            />
             <Button type="submit" fullWidth mt="xl" loading={isLoading}>
               {t("Create workspace")}
             </Button>
           </form>
         </Box>
       </Container>
+
       {isCloud() && (
-        <Text ta="center">
+        <Text ta="center" mt="md">
           {t("Already part of an existing workspace?")}{" "}
-          <Anchor
-            component={Link}
-            to={APP_ROUTE.AUTH.SELECT_WORKSPACE}
-            fw={500}
-          >
+          <Anchor component={Link} to={APP_ROUTE.AUTH.SELECT_WORKSPACE} fw={500}>
             {t("Sign-in")}
           </Anchor>
         </Text>

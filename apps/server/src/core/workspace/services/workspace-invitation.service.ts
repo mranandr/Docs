@@ -20,7 +20,7 @@ import { MailService } from '../../../integrations/mail/mail.service';
 import InvitationEmail from '@docmost/transactional/emails/invitation-email';
 import { GroupUserRepo } from '@docmost/db/repos/group/group-user.repo';
 import InvitationAcceptedEmail from '@docmost/transactional/emails/invitation-accepted-email';
-import { TokenService } from '../../auth/services/token.service';
+import { KeycloakTokenService } from 'src/core/auth/token.service'; 
 import { nanoIdGen } from '../../../common/helpers';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { executeWithPagination } from '@docmost/db/pagination/pagination';
@@ -42,7 +42,7 @@ export class WorkspaceInvitationService {
     private groupUserRepo: GroupUserRepo,
     private mailService: MailService,
     private domainService: DomainService,
-    private tokenService: TokenService,
+    private tokenService: KeycloakTokenService,
     @InjectKysely() private readonly db: KyselyDB,
     @InjectQueue(QueueName.BILLING_QUEUE) private billingQueue: Queue,
     private readonly environmentService: EnvironmentService,
@@ -307,8 +307,11 @@ export class WorkspaceInvitationService {
       };
     }
 
-    const authToken = await this.tokenService.generateAccessToken(newUser);
-    return { authToken };
+    return {
+  requiresLogin: true,
+  message: "Invitation accepted. Please log in with your account.",
+};
+
   }
 
   async resendInvitation(

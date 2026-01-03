@@ -6,7 +6,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { CollabWsAdapter } from './adapter/collab-ws.adapter';
 import { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
-import { TokenModule } from '../core/auth/token.module';
+import { AuthModule } from 'src/core/auth/auth.module'; 
 import { HistoryListener } from './listeners/history.listener';
 import { LoggerExtension } from './extensions/logger.extension';
 
@@ -19,7 +19,7 @@ import { LoggerExtension } from './extensions/logger.extension';
     HistoryListener,
   ],
   exports: [CollaborationGateway],
-  imports: [TokenModule],
+  imports: [AuthModule],
 })
 export class CollaborationModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CollaborationModule.name);

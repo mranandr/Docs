@@ -3,12 +3,11 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { comparePasswordHash } from 'src/common/helpers/utils';
 import { Workspace } from '@docmost/db/types/entity.types';
-import { validateSsoEnforcement } from '../auth/auth.util';
+import { validateSsoEnforcement } from '../auth/auth.util'; 
 
 @Injectable()
 export class UserService {
@@ -93,4 +92,24 @@ export class UserService {
     await this.userRepo.updateUser(updateUserDto, userId, workspace.id);
     return user;
   }
+
+    async findByEmail(email: string) {
+    return this.userRepo.findByEmailCon(email);
+  }
+
+  async createFromExternalSource(dto: {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}) {
+  return this.userRepo.insertUser({
+    id: dto.id,
+    email: dto.email.toLowerCase(),
+    name: dto.name,
+    role: dto.role,
+    workspaceId: null,  
+  });
+}
+
 }

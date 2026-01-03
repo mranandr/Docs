@@ -12,7 +12,6 @@ import {
 import { SpaceService } from './services/space.service';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SpaceIdDto } from './dto/space-id.dto';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { SpaceMemberService } from './services/space-member.service';
@@ -34,8 +33,9 @@ import {
 } from '../casl/interfaces/workspace-ability.type';
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
 import { CreateSpaceDto } from './dto/create-space.dto';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('spaces')
 export class SpaceController {
   constructor(

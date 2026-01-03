@@ -9,12 +9,12 @@ import {
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import { WorkspaceRepo } from '@docmost/db/repos/workspace/workspace.repo';
+import { KeycloakAuthGuard } from '../auth/auth.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(KeycloakAuthGuard)
 @Controller('users')
 export class UserController {
   constructor(
@@ -22,26 +22,33 @@ export class UserController {
     private readonly workspaceRepo: WorkspaceRepo,
   ) {}
 
-  @HttpCode(HttpStatus.OK)
-  @Post('me')
-  async getUserInfo(
-    @AuthUser() authUser: User,
-    @AuthWorkspace() workspace: Workspace,
-  ) {
-    const memberCount = await this.workspaceRepo.getActiveUserCount(
-      workspace.id,
-    );
+@HttpCode(HttpStatus.OK)
+@Post('me')
+async getUserInfo(
+  @AuthUser() authUser: User,
+  @AuthWorkspace() workspace?: Workspace | null,  
+) {
+  let workspaceInfo = null;
+
+  if (workspace) {
+    const memberCount = await this.workspaceRepo.getActiveUserCount(workspace.id);
 
     const { licenseKey, ...rest } = workspace;
 
-    const workspaceInfo = {
+    workspaceInfo = {
       ...rest,
       memberCount,
       hasLicenseKey: Boolean(licenseKey),
     };
-
-    return { user: authUser, workspace: workspaceInfo };
   }
+
+  return {
+    user: authUser,
+    workspace: workspaceInfo,
+    onboardingCompleted: Boolean(workspace), 
+  };
+}
+
 
   @HttpCode(HttpStatus.OK)
   @Post('update')
